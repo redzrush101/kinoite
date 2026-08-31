@@ -41,6 +41,7 @@ modules:
         - libvirt-daemon-config-network
         - libvirt-daemon-kvm
         - libxml2
+        - nodejs
         - podman-docker
         - psmisc
         - python3

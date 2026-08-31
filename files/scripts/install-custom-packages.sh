@@ -102,6 +102,10 @@ Categories=Utility;Development;
 DESKTOP
 dnf5 remove -y uv
 
+# Cline CLI: official npm distribution with platform-native binaries.
+npm install --global --no-fund --no-audit cline
+npm cache clean --force >/dev/null 2>&1 || true
+
 # SP Flash Tool v5 channel: upstream bundle is FHS-targeted and carries its Qt4 stack.
 download sp-flash-tool "$work/sp-flash-tool.zip"
 sp_tmp="$work/sp"
@@ -147,6 +151,7 @@ DESKTOP
 
 # Basic build-time sanity checks: fail the image rather than publish a broken toolset.
 command -v iloader >/dev/null
+command -v cline >/dev/null
 /usr/bin/samloader --help >/dev/null
 /usr/bin/uad-ng --help >/dev/null 2>&1 || true
 FUSE_LIBRARY_PATH=/usr/lib64/libfuse3.so.4 "$mtk_env/bin/python" \
