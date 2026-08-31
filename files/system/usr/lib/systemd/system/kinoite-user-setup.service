@@ -1,0 +1,10 @@
+[Unit]
+Description=Apply Kinoite user defaults
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/kinoite-user-setup
+
+[Install]
+WantedBy=multi-user.target

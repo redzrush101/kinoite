@@ -1,0 +1,84 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+name: kinoite
+description: Personal Fedora Atomic KDE image
+base-image: ghcr.io/ublue-os/kinoite-main
+image-version: latest
+
+modules:
+  - type: files@v1
+    files:
+      - source: system
+        destination: /
+
+  - type: dnf@v1
+    install:
+      install-weak-deps: false
+      packages:
+        - android-tools
+        - btop
+        - cups
+        - device-mapper-multipath
+        - edk2-ovmf
+        - fd-find
+        - fuse3
+        - gh
+        - git
+        - glibc-langpack-de
+        - iwd
+        - libusb1
+        - libvirt-daemon-config-network
+        - libvirt-daemon-kvm
+        - libxml2
+        - podman-docker
+        - psmisc
+        - python3
+        - qemu-kvm
+        - ripgrep
+        - swtpm
+        - tailscale
+        - unzip
+        - virt-manager
+        - zsh
+        - zsh-autosuggestions
+        - zsh-syntax-highlighting
+
+  - type: script@v2
+    scripts:
+      - install-custom-packages.sh
+      - configure-system.sh
+
+  - type: default-flatpaks@v2
+    configurations:
+      - scope: system
+        notify: false
+        install:
+          - com.brave.Browser
+          - com.discordapp.Discord
+          - org.localsend.localsend_app
+
+  - type: brew@v1
+    auto-update: true
+    auto-upgrade: true
+    brew-analytics: false
+    direct-pull: false
+
+  - type: systemd@v1
+    system:
+      enabled:
+        - cups.service
+        - fstrim.timer
+        - kinoite-devtools.timer
+        - kinoite-podman-prune.timer
+        - kinoite-user-setup.service
+        - libvirt-guests.service
+        - systemd-resolved.service
+        - tailscaled.service
+
+  - type: kargs@v1
+    arch: x86_64
+    kargs:
+      - amd_iommu=on
+      - amdgpu.rebar=0
+
+  - type: signing@v1

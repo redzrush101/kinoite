@@ -1,0 +1,17 @@
+setopt AUTO_CD EXTENDED_GLOB
+
+bindkey '\e[1;3D' backward-word
+bindkey '\e[1;3C' forward-word
+bindkey '\e[1;5D' backward-word
+bindkey '\e[1;5C' forward-word
+bindkey '\eb' backward-word
+bindkey '\ef' forward-word
+
+[[ -r /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -r /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"

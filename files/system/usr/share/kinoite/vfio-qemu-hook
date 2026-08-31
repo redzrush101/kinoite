@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+vm_name="${1:-}"
+event="${2:-}/${3:-}"
+[[ -n "$vm_name" ]] || exit 0
+
+user=yassin
+gpu=0000:07:00.0
+managed=(0000:07:00.0 0000:07:00.1 0000:09:00.4)
+
+is_managed() {
+  local dev="$1" item
+  for item in "${managed[@]}"; do
+    [[ "$dev" == "$item" ]] && return 0
+  done
+  return 1
+}
+
+release_gpu() {
+  local drv_link drv
+  drv_link="/sys/bus/pci/devices/$gpu/driver"
+  if [[ ! -L "$drv_link" ]]; then
+    modprobe amdgpu || true
+    echo "$gpu" > /sys/bus/pci/drivers_probe || true
+    return 0
+  fi
+  drv="$(basename "$(readlink -f "$drv_link")")"
+  if [[ "$drv" != amdgpu ]]; then
+    virsh nodedev-reattach "pci_${gpu//[:.]/_}" || true
+    modprobe amdgpu || true
+    echo "$gpu" > /sys/bus/pci/drivers_probe || true
+  fi
+}
+
+gpu_xpath="string(//hostdev[@type='pci']/source/address[@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0']/@function)"
+managed_xpath="count(//hostdev[@type='pci']/source/address[(concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:07:00.0') or (concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:07:00.1') or (concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:09:00.4')])"
+xml="$(mktemp)"
+trap 'rm -f "$xml"' EXIT
+
+if ! virsh dumpxml "$vm_name" > "$xml" 2>/dev/null; then
+  [[ "$event" != release/end ]] || release_gpu
+  [[ "$event" != prepare/begin ]]
+  exit
+fi
+
+has_gpu="$(xmllint --xpath "$gpu_xpath" "$xml" 2>/dev/null || true)"
+managed_count="$(xmllint --xpath "$managed_xpath" "$xml" 2>/dev/null || printf 0)"
+[[ -n "$has_gpu" ]] || exit 0
+
+case "$event" in
+  prepare/begin)
+    systemctl stop display-manager.service
+    if id "$user" >/dev/null 2>&1; then
+      loginctl terminate-user "$user" || true
+    fi
+    for _ in {1..50}; do
+      if ! fuser -s /dev/dri/card* /dev/dri/renderD* 2>/dev/null; then
+        break
+      fi
+      sleep 0.1
+    done
+    modprobe -r amdgpu || true
+    if [[ "$managed_count" != "0" ]]; then
+      while IFS= read -r dev; do
+        is_managed "$dev" || continue
+        virsh nodedev-detach "pci_${dev//[:.]/_}" || true
+      done < <(xmllint --xpath '//hostdev[@type="pci"]/source/address/concat(substring(@domain,3),":",substring(@bus,3),":",substring(@slot,3),".",substring(@function,3),"\n")' "$xml" 2>/dev/null || true)
+    fi
+    ;;
+  release/end)
+    release_gpu
+    systemctl start display-manager.service
+    ;;
+esac
