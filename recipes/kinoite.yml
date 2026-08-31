@@ -36,6 +36,7 @@ modules:
         - qemu-kvm
         - ripgrep
         - swtpm
+        - systemd-resolved
         - tailscale
         - unzip
         - virt-manager

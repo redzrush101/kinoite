@@ -1,75 +1,108 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-vm_name="${1:-}"
-event="${2:-}/${3:-}"
-[[ -n "$vm_name" ]] || exit 0
+operation="${2:-}"
+suboperation="${3:-}"
+event="$operation/$suboperation"
+case "$event" in
+  prepare/begin|release/end) ;;
+  *) exit 0 ;;
+esac
 
-user=yassin
+managed_devices=(0000:07:00.0 0000:07:00.1 0000:09:00.4)
 gpu=0000:07:00.0
-managed=(0000:07:00.0 0000:07:00.1 0000:09:00.4)
+recovery_performed=0
 
-is_managed() {
-  local dev="$1" item
-  for item in "${managed[@]}"; do
-    [[ "$dev" == "$item" ]] && return 0
+driver_name() {
+  local path="/sys/bus/pci/devices/$1/driver" driver
+  if [[ -L "$path" ]]; then
+    driver="$(readlink -f "$path" 2>/dev/null || true)"
+    printf '%s\n' "${driver##*/}"
+  else
+    printf '%s\n' unbound
+  fi
+}
+
+clear_driver_override() {
+  local path="/sys/bus/pci/devices/$1/driver_override"
+  [[ -w "$path" ]] && printf '\n' > "$path" 2>/dev/null || true
+}
+
+recover_device() {
+  local device="$1"
+  case "$(driver_name "$device")" in
+    vfio-pci)
+      recovery_performed=1
+      if printf '%s' "$device" > /sys/bus/pci/drivers/vfio-pci/unbind 2>/dev/null; then
+        clear_driver_override "$device"
+        printf '%s' "$device" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+      fi
+      ;;
+    unbound)
+      recovery_performed=1
+      clear_driver_override "$device"
+      printf '%s' "$device" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+      ;;
+  esac
+}
+
+wait_for_driver() {
+  local device="$1" expected="$2" i
+  for ((i=0; i<100; i++)); do
+    [[ "$(driver_name "$device")" == "$expected" ]] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+wait_for_devices_free() {
+  local i
+  for ((i=0; i<100; i++)); do
+    ! fuser -s /dev/dri/* /dev/snd/* 2>/dev/null && return 0
+    sleep 0.1
   done
   return 1
 }
 
 release_gpu() {
-  local drv_link drv
-  drv_link="/sys/bus/pci/devices/$gpu/driver"
-  if [[ ! -L "$drv_link" ]]; then
-    modprobe amdgpu || true
-    echo "$gpu" > /sys/bus/pci/drivers_probe || true
-    return 0
-  fi
-  drv="$(basename "$(readlink -f "$drv_link")")"
-  if [[ "$drv" != amdgpu ]]; then
-    virsh nodedev-reattach "pci_${gpu//[:.]/_}" || true
-    modprobe amdgpu || true
-    echo "$gpu" > /sys/bus/pci/drivers_probe || true
-  fi
+  local device
+  trap 'systemctl start display-manager.service >/dev/null 2>&1 || true' EXIT
+  recovery_performed=0
+  for device in "${managed_devices[@]}"; do recover_device "$device" || true; done
+  [[ "$recovery_performed" -eq 0 ]] || udevadm settle --timeout=10 >/dev/null 2>&1 || true
+  wait_for_driver "$gpu" amdgpu
+  systemctl start display-manager.service >/dev/null 2>&1
+  systemctl is-active --quiet display-manager.service
+  trap - EXIT
 }
 
-gpu_xpath="string(//hostdev[@type='pci']/source/address[@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0']/@function)"
-managed_xpath="count(//hostdev[@type='pci']/source/address[(concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:07:00.0') or (concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:07:00.1') or (concat(substring(@domain,3),':',substring(@bus,3),':',substring(@slot,3),'.',substring(@function,3))='0000:09:00.4')])"
-xml="$(mktemp)"
-trap 'rm -f "$xml"' EXIT
+xml="$(cat)"
+gpu_xpath="@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0'"
+managed_xpath="(@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0') or (@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x1') or (@domain='0x0000' and @bus='0x09' and @slot='0x00' and @function='0x4')"
 
-if ! virsh dumpxml "$vm_name" > "$xml" 2>/dev/null; then
+if ! counts="$(printf '%s' "$xml" | xmllint --xpath "concat(count(/domain/devices/hostdev[@type='pci']/source/address[$gpu_xpath]), ' ', count(/domain/devices/hostdev[@type='pci' and not(@managed='yes')]/source/address[$managed_xpath]))" - 2>/dev/null)"; then
   [[ "$event" != release/end ]] || release_gpu
   [[ "$event" != prepare/begin ]]
   exit
 fi
-
-has_gpu="$(xmllint --xpath "$gpu_xpath" "$xml" 2>/dev/null || true)"
-managed_count="$(xmllint --xpath "$managed_xpath" "$xml" 2>/dev/null || printf 0)"
-[[ -n "$has_gpu" ]] || exit 0
+read -r gpu_count unmanaged_count <<< "$counts"
+[[ "$gpu_count" != 0 ]] || exit 0
+[[ "$event" != prepare/begin || "$unmanaged_count" == 0 ]] || exit 1
 
 case "$event" in
   prepare/begin)
-    systemctl stop display-manager.service
-    if id "$user" >/dev/null 2>&1; then
-      loginctl terminate-user "$user" || true
+    display_stopped=0
+    trap 'status=$?; trap - EXIT; if [[ $status -ne 0 && $display_stopped -eq 1 ]]; then systemctl start display-manager.service >/dev/null 2>&1 || true; fi; exit $status' EXIT
+    systemctl stop display-manager.service >/dev/null 2>&1
+    display_stopped=1
+    if fuser -s /dev/dri/* /dev/snd/* 2>/dev/null; then
+      loginctl terminate-user yassin >/dev/null 2>&1 || true
     fi
-    for _ in {1..50}; do
-      if ! fuser -s /dev/dri/card* /dev/dri/renderD* 2>/dev/null; then
-        break
-      fi
-      sleep 0.1
-    done
-    modprobe -r amdgpu || true
-    if [[ "$managed_count" != "0" ]]; then
-      while IFS= read -r dev; do
-        is_managed "$dev" || continue
-        virsh nodedev-detach "pci_${dev//[:.]/_}" || true
-      done < <(xmllint --xpath '//hostdev[@type="pci"]/source/address/concat(substring(@domain,3),":",substring(@bus,3),":",substring(@slot,3),".",substring(@function,3),"\n")' "$xml" 2>/dev/null || true)
-    fi
+    wait_for_devices_free
+    display_stopped=0
+    trap - EXIT
     ;;
   release/end)
     release_gpu
-    systemctl start display-manager.service
     ;;
 esac
