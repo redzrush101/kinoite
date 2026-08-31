@@ -1,52 +1,185 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-event="${2:-}/${3:-}"
 guest="${1:-}"
+event="${2:-}/${3:-}"
 case "$event" in
   prepare/begin|release/end) ;;
   *) exit 0 ;;
 esac
 
-state_dir=/run/kinoite-vfio
-display_marker="$state_dir/display-manager-was-active"
+readonly user_name=yassin
+readonly gpu=0000:07:00.0
+readonly state_dir=/run/kinoite-vfio
+readonly display_marker="$state_dir/display-manager-was-active"
+readonly -a managed_devices=(
+  0000:07:00.0
+  0000:07:00.1
+  0000:09:00.3
+  0000:09:00.4
+)
 
-restore_display() {
-  if [[ -e "$display_marker" && "$(<"$display_marker")" == "$guest" ]]; then
-    systemctl start display-manager.service
-    rm -f "$display_marker"
+readonly gpu_xpath="@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0'"
+readonly managed_xpath="(@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0') or (@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x1') or (@domain='0x0000' and @bus='0x09' and @slot='0x00' and @function='0x3') or (@domain='0x0000' and @bus='0x09' and @slot='0x00' and @function='0x4')"
+
+log() {
+  printf 'kinoite-vfio-hook[%s] %s: %s\n' "$guest" "$event" "$*" >&2
+  logger -t kinoite-vfio-hook -- "$guest $event: $*" 2>/dev/null || true
+}
+
+driver_name() {
+  local path="/sys/bus/pci/devices/$1/driver"
+  local driver
+  if [[ -L "$path" ]]; then
+    driver="$(readlink -f "$path" 2>/dev/null || true)"
+    printf '%s\n' "${driver##*/}"
+  else
+    printf '%s\n' unbound
   fi
 }
 
-xml="$(cat)"
-gpu_xpath="@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0'"
-managed_xpath="(@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0') or (@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x1') or (@domain='0x0000' and @bus='0x09' and @slot='0x00' and @function='0x4')"
+clear_driver_override() {
+  local path="/sys/bus/pci/devices/$1/driver_override"
+  if [[ -w "$path" ]]; then
+    printf '\n' > "$path" 2>/dev/null || true
+  fi
+}
 
-if ! counts="$(printf '%s' "$xml" | xmllint --xpath "concat(count(/domain/devices/hostdev[@type='pci']/source/address[$gpu_xpath]), ' ', count(/domain/devices/hostdev[@type='pci' and not(@managed='yes')]/source/address[$managed_xpath]))" - 2>/dev/null)"; then
-  [[ "$event" != release/end ]] || restore_display
-  [[ "$event" != prepare/begin ]]
-  exit
+recover_device() {
+  local device="$1"
+  local driver
+  driver="$(driver_name "$device")"
+  case "$driver" in
+    vfio-pci)
+      recovery_performed=1
+      log "recovering $device from vfio-pci"
+      if printf '%s' "$device" > /sys/bus/pci/drivers/vfio-pci/unbind 2>/dev/null; then
+        clear_driver_override "$device"
+        printf '%s' "$device" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+      fi
+      ;;
+    unbound)
+      recovery_performed=1
+      log "probing unbound device $device"
+      clear_driver_override "$device"
+      printf '%s' "$device" > /sys/bus/pci/drivers_probe 2>/dev/null || true
+      ;;
+  esac
+}
+
+wait_for_driver() {
+  local device="$1"
+  local expected="$2"
+  local i
+  for ((i = 0; i < 100; i++)); do
+    [[ "$(driver_name "$device")" == "$expected" ]] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+wait_for_host_graphics() {
+  local i
+  for ((i = 0; i < 150; i++)); do
+    if [[ "$(driver_name "$gpu")" == amdgpu ]] && compgen -G '/dev/dri/card*' >/dev/null; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+wait_for_devices_free() {
+  local i
+  for ((i = 0; i < 100; i++)); do
+    ! fuser -s /dev/dri/* /dev/snd/* 2>/dev/null && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+display_was_active() {
+  [[ -e "$display_marker" ]] && [[ "$(<"$display_marker")" == "$guest" ]]
+}
+
+restore_display_on_prepare_error() {
+  local status=$?
+  trap - EXIT
+  if ((status != 0)) && ((display_stopped == 1)); then
+    log "prepare failed; restoring display manager"
+    systemctl start display-manager.service >/dev/null 2>&1 || true
+    rm -f "$display_marker"
+  fi
+  exit "$status"
+}
+
+release_gpu() {
+  local attempt device
+
+  display_was_active || return 0
+  for attempt in 1 2 3; do
+    recovery_performed=0
+    for device in "${managed_devices[@]}"; do
+      recover_device "$device" || true
+    done
+    if ((recovery_performed == 1)); then
+      udevadm settle --timeout=10 >/dev/null 2>&1 || true
+    fi
+    if wait_for_host_graphics; then
+      log "host graphics recovered; starting display manager"
+      systemctl start display-manager.service >/dev/null 2>&1
+      systemctl is-active --quiet display-manager.service
+      rm -f "$display_marker"
+      return 0
+    fi
+    log "host graphics recovery attempt $attempt failed: $gpu is $(driver_name "$gpu")"
+  done
+
+  log "host graphics did not recover; leaving display manager stopped and marker intact"
+  return 1
+}
+
+xml="$(cat)"
+if ! counts="$(
+  printf '%s' "$xml" |
+    xmllint --xpath "concat(count(/domain/devices/hostdev[@type='pci']/source/address[$gpu_xpath]), ' ', count(/domain/devices/hostdev[@type='pci' and not(@managed='yes')]/source/address[$managed_xpath]))" - 2>/dev/null
+)"; then
+  if [[ "$event" == release/end ]]; then
+    log "could not parse domain XML during release; attempting recovery"
+    release_gpu
+    exit 0
+  fi
+  log "could not parse domain XML during prepare"
+  exit 1
 fi
 
 read -r gpu_count unmanaged_count <<< "$counts"
 [[ "$gpu_count" != 0 ]] || exit 0
 
+if [[ "$event" == prepare/begin && "$unmanaged_count" != 0 ]]; then
+  log "VFIO PCI devices must use managed='yes'"
+  exit 1
+fi
+
 case "$event" in
   prepare/begin)
-    if [[ "$unmanaged_count" != 0 ]]; then
-      echo "VFIO devices must use managed='yes' so libvirt can detach and reattach them" >&2
-      exit 1
-    fi
+    display_stopped=0
+    trap restore_display_on_prepare_error EXIT
     if systemctl is-active --quiet display-manager.service; then
       install -d -m 0755 "$state_dir"
       printf '%s\n' "$guest" > "$display_marker"
-      trap 'status=$?; trap - EXIT; if [[ $status -ne 0 ]]; then restore_display || true; fi; exit $status' EXIT
-      systemctl stop display-manager.service
-      trap - EXIT
+      systemctl stop display-manager.service >/dev/null 2>&1
+      display_stopped=1
     fi
+    if fuser -s /dev/dri/* /dev/snd/* 2>/dev/null; then
+      log "graphics or audio devices remain busy; terminating $user_name sessions"
+      loginctl terminate-user "$user_name" >/dev/null 2>&1 || true
+    fi
+    wait_for_devices_free
+    display_stopped=0
+    trap - EXIT
     ;;
   release/end)
-    # Libvirt calls release/end after managed PCI devices are back on host drivers.
-    restore_display
+    release_gpu
     ;;
 esac
