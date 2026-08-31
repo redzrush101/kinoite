@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+user=yassin
+
+id "$user" >/dev/null 2>&1 || exit 0
+
+for group in wheel dialout libvirt adbusers; do
+  getent group "$group" >/dev/null 2>&1 && usermod -aG "$group" "$user"
+done
+
+current_shell="$(getent passwd "$user" | cut -d: -f7)"
+[[ "$current_shell" == /usr/bin/zsh ]] || usermod -s /usr/bin/zsh "$user"
+
+home="$(getent passwd "$user" | cut -d: -f6)"
+primary_group="$(id -gn "$user")"
+install -d -o "$user" -g "$primary_group" -m 0700 "$home"
+
+zshrc="$home/.zshrc"
+touch "$zshrc"
+chown "$user:$primary_group" "$zshrc"
+if ! grep -Fq '/usr/share/kinoite/zshrc' "$zshrc"; then
+  printf '\n[[ -r /usr/share/kinoite/zshrc ]] && source /usr/share/kinoite/zshrc\n' >> "$zshrc"
+fi
+
+if ! runuser -u "$user" -- git config --global --get user.name >/dev/null 2>&1; then
+  runuser -u "$user" -- git config --global user.name 'Yassin'
+fi
+git_email="$(runuser -u "$user" -- git config --global --get user.email 2>/dev/null || true)"
+case "$git_email" in
+  ""|yassin@Nixos)
+    runuser -u "$user" -- git config --global user.email 'yassin@fedora'
+    ;;
+esac
+
+install -d -m 0755 /var/lib/kinoite
+touch /var/lib/kinoite/user-setup-v2.done

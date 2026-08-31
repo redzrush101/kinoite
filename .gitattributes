@@ -1,0 +1,14 @@
+* text=auto
+
+*.conf text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.service text eol=lf
+*.sh text eol=lf
+*.timer text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Justfile text eol=lf
+files/system/usr/bin/* text eol=lf
+files/system/usr/libexec/* text eol=lf
+files/system/usr/share/kinoite/* text eol=lf

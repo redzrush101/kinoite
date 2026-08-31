@@ -1,0 +1,56 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".github/CODEOWNERS"
+      - "LICENSE"
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "00 06 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Validate repository inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool files/packages.lock.json >/dev/null
+          python3 -c 'from pathlib import Path; p = Path("scripts/update-lock.py"); compile(p.read_text(), str(p), "exec")'
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(find files -type f -perm -u+x -print0)
+          test -s cosign.pub
+
+      - name: Build, sign and publish
+        uses: blue-build/github-action@836161eb076426a451e6a0054f722b1153b8b3ad # v1.12.0
+        with:
+          recipe: kinoite.yml
+          cosign_private_key: ${{ secrets.SIGNING_SECRET }}
+          registry_token: ${{ github.token }}
+          pr_event_number: ${{ github.event.number }}
+          push: ${{ github.event_name != 'pull_request' }}
+          skip_checkout: true
+          verify_install: true
+          retry_push_count: 3
+          maximize_build_space: true

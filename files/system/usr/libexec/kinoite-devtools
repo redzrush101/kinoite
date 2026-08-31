@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+brew=/home/linuxbrew/.linuxbrew/bin/brew
+[[ -x "$brew" ]]
+
+"$brew" install node pi-coding-agent starship
+"$brew" install --cask codex
+"$(dirname "$brew")/npm" install --global freebuff@latest

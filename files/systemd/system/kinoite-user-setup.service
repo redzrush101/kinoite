@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply Kinoite user defaults
+After=local-fs.target
+ConditionPathExists=!/var/lib/kinoite/user-setup-v2.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/kinoite-user-setup
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Kinoite user development tools
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+RandomizedDelaySec=6h
+
+[Install]
+WantedBy=timers.target

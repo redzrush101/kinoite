@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+event="${2:-}/${3:-}"
+guest="${1:-}"
+case "$event" in
+  prepare/begin|release/end) ;;
+  *) exit 0 ;;
+esac
+
+state_dir=/run/kinoite-vfio
+display_marker="$state_dir/display-manager-was-active"
+
+restore_display() {
+  if [[ -e "$display_marker" && "$(<"$display_marker")" == "$guest" ]]; then
+    systemctl start display-manager.service
+    rm -f "$display_marker"
+  fi
+}
+
+xml="$(cat)"
+gpu_xpath="@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0'"
+managed_xpath="(@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x0') or (@domain='0x0000' and @bus='0x07' and @slot='0x00' and @function='0x1') or (@domain='0x0000' and @bus='0x09' and @slot='0x00' and @function='0x4')"
+
+if ! counts="$(printf '%s' "$xml" | xmllint --xpath "concat(count(/domain/devices/hostdev[@type='pci']/source/address[$gpu_xpath]), ' ', count(/domain/devices/hostdev[@type='pci' and not(@managed='yes')]/source/address[$managed_xpath]))" - 2>/dev/null)"; then
+  [[ "$event" != release/end ]] || restore_display
+  [[ "$event" != prepare/begin ]]
+  exit
+fi
+
+read -r gpu_count unmanaged_count <<< "$counts"
+[[ "$gpu_count" != 0 ]] || exit 0
+
+case "$event" in
+  prepare/begin)
+    if [[ "$unmanaged_count" != 0 ]]; then
+      echo "VFIO devices must use managed='yes' so libvirt can detach and reattach them" >&2
+      exit 1
+    fi
+    if systemctl is-active --quiet display-manager.service; then
+      install -d -m 0755 "$state_dir"
+      printf '%s\n' "$guest" > "$display_marker"
+      trap 'status=$?; trap - EXIT; if [[ $status -ne 0 ]]; then restore_display || true; fi; exit $status' EXIT
+      systemctl stop display-manager.service
+      trap - EXIT
+    fi
+    ;;
+  release/end)
+    # Libvirt calls release/end after managed PCI devices are back on host drivers.
+    restore_display
+    ;;
+esac

@@ -1,0 +1,42 @@
+{
+  "android-udev-rules": {
+    "commit": "5e7cef34d9e445b4a34d445d164f8cf862efd19a",
+    "path": "51-android.rules",
+    "repository": "M0Rf30/android-udev-rules",
+    "sha256": "2ed60561b3b24851d0e223e48e79e82726affee01c3323bdc417c9cf1a0c6ee0",
+    "tag": "20260423",
+    "url": "https://raw.githubusercontent.com/M0Rf30/android-udev-rules/5e7cef34d9e445b4a34d445d164f8cf862efd19a/51-android.rules"
+  },
+  "iloader": {
+    "asset": "iloader-linux-x86_64.rpm",
+    "repository": "nab138/iloader",
+    "sha256": "444ed4365a760d59185762af756f2a5a49655cfd33e7d1bcbdb328ce37402eca",
+    "tag": "v2.3.1",
+    "url": "https://github.com/nab138/iloader/releases/download/v2.3.1/iloader-linux-x86_64.rpm"
+  },
+  "mtkclient": {
+    "commit": "5a863eece86fcaa97cb8325cf747e0aae3c307e4",
+    "repository": "bkerler/mtkclient",
+    "tag": "v2.1.4.1"
+  },
+  "samloader": {
+    "asset": "samloader-v2.0.0-linux-x86_64.tar.xz",
+    "repository": "topjohnwu/samloader-rs",
+    "sha256": "7c6514028f20d5ea0eb57d6f872eee41b3a52336eabac6379b15a01a06ed7a79",
+    "tag": "2.0.0",
+    "url": "https://github.com/topjohnwu/samloader-rs/releases/download/2.0.0/samloader-v2.0.0-linux-x86_64.tar.xz"
+  },
+  "sp-flash-tool": {
+    "channel": "v5-linux",
+    "sha256": "18b11eed341fd57feb7fbc58a7b8eb93429bacc7d25a993878af8a0b6e98df10",
+    "url": "https://cdn.spflashtools.com/wp-content/uploads/SP_Flash_Tool_v5.2228_Linux.zip",
+    "version": "5.2228"
+  },
+  "uad-ng": {
+    "asset": "uad-ng-noselfupdate-linux",
+    "repository": "Universal-Debloater-Alliance/universal-android-debloater-next-generation",
+    "sha256": "bae9ca2a31730dcf6c47d16915a23972690938213fb1705caaebd6d9d8794a34",
+    "tag": "v1.2.0",
+    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-noselfupdate-linux"
+  }
+}
