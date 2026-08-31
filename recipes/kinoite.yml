@@ -1,9 +1,15 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+version: 1
 name: kinoite
 description: Personal Fedora Atomic KDE image
 base-image: ghcr.io/ublue-os/kinoite-main
 image-version: latest
+platforms:
+  - linux/amd64
+labels:
+  org.opencontainers.image.source: https://github.com/redzrush101/kinoite
+  org.opencontainers.image.licenses: Apache-2.0
 
 modules:
   - type: files@v1
@@ -69,12 +75,15 @@ modules:
       enabled:
         - cups.service
         - fstrim.timer
-        - kinoite-devtools.timer
-        - kinoite-podman-prune.timer
         - kinoite-user-setup.service
         - libvirt-guests.service
         - systemd-resolved.service
         - tailscaled.service
+      disabled:
+        - NetworkManager-wait-online.service
+    user:
+      enabled:
+        - kinoite-devtools.timer
 
   - type: kargs@v1
     arch: x86_64

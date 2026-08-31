@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-lock=/ctx/packages.lock.json
+lock="${CONFIG_DIRECTORY:-/tmp/files}/packages.lock.json"
+[[ -r "$lock" ]]
+[[ "$(uname -m)" == x86_64 ]]
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -26,18 +28,6 @@ download() {
 download iloader "$work/iloader.rpm"
 dnf5 install -y --setopt=install_weak_deps=False "$work/iloader.rpm"
 
-# Odin4: upstream release binary + host udev access rule.
-download odin4 "$work/odin4"
-install -Dm0755 "$work/odin4" /usr/bin/odin4
-cat > /usr/lib/udev/rules.d/60-odin4.rules <<'RULES'
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="6601", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="685d", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="68c3", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="68ef", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="4eee", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="4eef", MODE="0660", TAG+="uaccess"
-RULES
-
 # samloader-rs: statically-linked upstream release.
 download samloader "$work/samloader.zip"
 mkdir "$work/samloader"
@@ -46,7 +36,8 @@ samloader_bin="$(find "$work/samloader" -type f -name samloader -print -quit)"
 [[ -n "$samloader_bin" ]]
 install -Dm0755 "$samloader_bin" /usr/bin/samloader
 
-# UAD-ng: official upstream Linux binary. Android platform tools come from Fedora.
+# UAD-ng: immutable-image build without its in-place self-updater. Android platform
+# tools come from Fedora and are updated with the base image.
 download uad-ng "$work/uad-ng"
 install -Dm0755 "$work/uad-ng" /usr/bin/uad-ng
 cat > /usr/share/applications/uad-ng.desktop <<'DESKTOP'
@@ -71,6 +62,7 @@ mtk_env=/usr/lib/kinoite/mtkclient
 rm -rf "$mtk_src" "$mtk_env"
 git clone --quiet --depth 1 --branch "$mtk_tag" "https://github.com/${mtk_repo}.git" "$mtk_src"
 [[ "$(git -C "$mtk_src" rev-parse HEAD)" == "$mtk_commit" ]]
+rm -rf "$mtk_src/.git"
 dnf5 install -y --setopt=install_weak_deps=False uv
 UV_PROJECT_ENVIRONMENT="$mtk_env" UV_PYTHON_DOWNLOADS=never \
   uv sync --frozen --no-dev --project "$mtk_src" --python /usr/bin/python3
@@ -136,7 +128,6 @@ DESKTOP
 
 # Basic build-time sanity checks: fail the image rather than publish a broken toolset.
 command -v iloader >/dev/null
-/usr/bin/odin4 --help >/dev/null 2>&1 || true
 /usr/bin/samloader --help >/dev/null
 /usr/bin/uad-ng --help >/dev/null 2>&1 || true
 "$mtk_env/bin/python" -c 'import mtkclient'

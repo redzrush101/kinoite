@@ -6,22 +6,22 @@ import json
 import os
 import re
 import sys
+import tempfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCK = ROOT / "packages.lock.json"
+LOCK = ROOT / "files" / "packages.lock.json"
 TOKEN = os.environ.get("GITHUB_TOKEN")
 UA = "redzrush101-kinoite-package-updater/1"
 
 ASSETS = {
     "iloader": ("nab138/iloader", re.compile(r"^iloader-linux-x86_64\.rpm$")),
-    "odin4": ("Llucs/odin4", re.compile(r"^odin4_x86_64_[0-9].*$")),
     "samloader": ("lineage-next/samloader-rs", re.compile(r"^samloader-v.*-linux-x86_64\.zip$")),
     "uad-ng": (
         "Universal-Debloater-Alliance/universal-android-debloater-next-generation",
-        re.compile(r"^uad-ng-linux$"),
+        re.compile(r"^uad-ng-noselfupdate-linux$"),
     ),
 }
 
@@ -47,6 +47,12 @@ def sha256_url(url: str) -> str:
     return h.hexdigest()
 
 
+def validate_sha256(value: str, source: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{64}", value):
+        raise RuntimeError(f"{source}: invalid SHA-256 digest {value!r}")
+    return value
+
+
 def github_asset(repo: str, pattern: re.Pattern[str]) -> dict[str, str]:
     release = read_json(f"https://api.github.com/repos/{repo}/releases/latest")
     matches = [a for a in release["assets"] if pattern.fullmatch(a["name"])]
@@ -58,7 +64,7 @@ def github_asset(repo: str, pattern: re.Pattern[str]) -> dict[str, str]:
     return {
         "asset": asset["name"],
         "repository": repo,
-        "sha256": sha,
+        "sha256": validate_sha256(sha, f"{repo}/{asset['name']}"),
         "tag": release["tag_name"],
         "url": asset["browser_download_url"],
     }
@@ -87,7 +93,12 @@ def sp_flash(old: dict) -> dict[str, str]:
     url = f"https://cdn.spflashtools.com/wp-content/uploads/SP_Flash_Tool_v{version}_Linux.zip"
     previous = old.get("sp-flash-tool", {})
     sha = previous.get("sha256") if previous.get("url") == url else sha256_url(url)
-    return {"channel": "v5-linux", "sha256": sha, "url": url, "version": version}
+    return {
+        "channel": "v5-linux",
+        "sha256": validate_sha256(sha, "SP Flash Tool"),
+        "url": url,
+        "version": version,
+    }
 
 
 def main() -> int:
@@ -99,7 +110,11 @@ def main() -> int:
     if LOCK.exists() and LOCK.read_text() == rendered:
         print("packages.lock.json is current")
         return 0
-    LOCK.write_text(rendered)
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=LOCK.parent, delete=False) as f:
+        f.write(rendered)
+        temporary = Path(f.name)
+    temporary.replace(LOCK)
     print("updated packages.lock.json")
     return 0
 

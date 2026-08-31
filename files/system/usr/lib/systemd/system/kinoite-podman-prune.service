@@ -1,6 +1,0 @@
-[Unit]
-Description=Prune unused Podman data
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/podman system prune -af

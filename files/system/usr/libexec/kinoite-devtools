@@ -6,4 +6,4 @@ brew=/home/linuxbrew/.linuxbrew/bin/brew
 
 "$brew" install node pi-coding-agent starship
 "$brew" install --cask codex
-/home/linuxbrew/.linuxbrew/bin/npm install --global freebuff@latest
+"$(dirname "$brew")/npm" install --global freebuff@latest

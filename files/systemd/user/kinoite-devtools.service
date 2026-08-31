@@ -1,0 +1,10 @@
+[Unit]
+Description=Install or update Kinoite user development tools
+ConditionPathIsExecutable=/home/linuxbrew/.linuxbrew/bin/brew
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/kinoite-devtools
+TimeoutStartSec=20min
+Nice=10
+IOSchedulingClass=idle

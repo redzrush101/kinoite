@@ -1,6 +1,7 @@
 [Unit]
 Description=Apply Kinoite user defaults
 After=local-fs.target
+ConditionPathExists=!/var/lib/kinoite/user-setup-v1.done
 
 [Service]
 Type=oneshot

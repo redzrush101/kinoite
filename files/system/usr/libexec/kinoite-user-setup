@@ -25,6 +25,12 @@ fi
 if ! runuser -u "$user" -- git config --global --get user.name >/dev/null 2>&1; then
   runuser -u "$user" -- git config --global user.name 'Yassin'
 fi
-if ! runuser -u "$user" -- git config --global --get user.email >/dev/null 2>&1; then
-  runuser -u "$user" -- git config --global user.email 'yassin@Nixos'
-fi
+git_email="$(runuser -u "$user" -- git config --global --get user.email 2>/dev/null || true)"
+case "$git_email" in
+  ""|yassin@Nixos)
+    runuser -u "$user" -- git config --global user.email 'yassin@fedora'
+    ;;
+esac
+
+install -d -m 0755 /var/lib/kinoite
+touch /var/lib/kinoite/user-setup-v1.done

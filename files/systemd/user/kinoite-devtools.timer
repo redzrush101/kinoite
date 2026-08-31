@@ -1,10 +1,10 @@
 [Unit]
-Description=Weekly Podman prune
+Description=Refresh Kinoite user development tools
 
 [Timer]
 OnCalendar=weekly
 Persistent=true
-RandomizedDelaySec=1h
+RandomizedDelaySec=6h
 
 [Install]
 WantedBy=timers.target

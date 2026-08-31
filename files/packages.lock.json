@@ -11,13 +11,6 @@
     "repository": "bkerler/mtkclient",
     "tag": "v2.1.4.1"
   },
-  "odin4": {
-    "asset": "odin4_x86_64_7.3.0-a46321b",
-    "repository": "Llucs/odin4",
-    "sha256": "5e3afc7dcf339c1eebd019627a0cdf07ea413495a101250cbf5fa2222186ad00",
-    "tag": "v7.3.0",
-    "url": "https://github.com/Llucs/odin4/releases/download/v7.3.0/odin4_x86_64_7.3.0-a46321b"
-  },
   "samloader": {
     "asset": "samloader-v2.0.0+lineage-next.0-linux-x86_64.zip",
     "repository": "lineage-next/samloader-rs",
@@ -32,10 +25,10 @@
     "version": "5.2228"
   },
   "uad-ng": {
-    "asset": "uad-ng-linux",
+    "asset": "uad-ng-noselfupdate-linux",
     "repository": "Universal-Debloater-Alliance/universal-android-debloater-next-generation",
-    "sha256": "8a87865ca150749c5c80644d0fd0c32789407b1329fbb9ea7adc46d8cc3884de",
+    "sha256": "bae9ca2a31730dcf6c47d16915a23972690938213fb1705caaebd6d9d8794a34",
     "tag": "v1.2.0",
-    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-linux"
+    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-noselfupdate-linux"
   }
 }
