@@ -1,6 +1,12 @@
 name: update packages
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/update-lock.py"
+      - "files/scripts/install-custom-packages.sh"
+      - ".github/workflows/update-packages.yml"
   schedule:
     - cron: "30 04 * * *"
   workflow_dispatch:
@@ -18,18 +24,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: true
+
       - name: Refresh release lock
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/update-lock.py
+
       - name: Commit changes
         run: |
           set -euo pipefail
-          if git diff --quiet -- files/packages.lock.json; then
-            exit 0
-          fi
+          git diff --quiet -- files/packages.lock.json && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add files/packages.lock.json
