@@ -1,18 +1,18 @@
 {
   "android-udev-rules": {
-    "commit": "5e7cef34d9e445b4a34d445d164f8cf862efd19a",
+    "commit": "f45ef6c7716ee40056fa687aeac18a8ca40933aa",
     "path": "51-android.rules",
     "repository": "M0Rf30/android-udev-rules",
-    "sha256": "2ed60561b3b24851d0e223e48e79e82726affee01c3323bdc417c9cf1a0c6ee0",
-    "tag": "20260423",
-    "url": "https://raw.githubusercontent.com/M0Rf30/android-udev-rules/5e7cef34d9e445b4a34d445d164f8cf862efd19a/51-android.rules"
+    "sha256": "51f6b45e5bf3386d01115df95eeab029325511bc83ec4cf4d0a29d748e90d8ff",
+    "tag": "20260922",
+    "url": "https://raw.githubusercontent.com/M0Rf30/android-udev-rules/f45ef6c7716ee40056fa687aeac18a8ca40933aa/51-android.rules"
   },
   "iloader": {
     "asset": "iloader-linux-x86_64.rpm",
     "repository": "nab138/iloader",
-    "sha256": "444ed4365a760d59185762af756f2a5a49655cfd33e7d1bcbdb328ce37402eca",
-    "tag": "v2.3.1",
-    "url": "https://github.com/nab138/iloader/releases/download/v2.3.1/iloader-linux-x86_64.rpm"
+    "sha256": "bce8c791775fbf3870d5a1c96be367079f9ca80be670f39f40f4204f6ff06561",
+    "tag": "v2.3.4",
+    "url": "https://github.com/nab138/iloader/releases/download/v2.3.4/iloader-linux-x86_64.rpm"
   },
   "mtkclient": {
     "commit": "5a863eece86fcaa97cb8325cf747e0aae3c307e4",
@@ -20,11 +20,11 @@
     "tag": "v2.1.4.1"
   },
   "samloader": {
-    "asset": "samloader-v2.0.0-linux-x86_64.tar.xz",
+    "asset": "samloader-v2.1.0-linux-x86_64.zip",
     "repository": "topjohnwu/samloader-rs",
-    "sha256": "7c6514028f20d5ea0eb57d6f872eee41b3a52336eabac6379b15a01a06ed7a79",
-    "tag": "2.0.0",
-    "url": "https://github.com/topjohnwu/samloader-rs/releases/download/2.0.0/samloader-v2.0.0-linux-x86_64.tar.xz"
+    "sha256": "2cd99f3824a5ad80e45a789503527743e81a14a26b384a31b8b3db95d79cf459",
+    "tag": "2.1.0",
+    "url": "https://github.com/topjohnwu/samloader-rs/releases/download/2.1.0/samloader-v2.1.0-linux-x86_64.zip"
   },
   "sp-flash-tool": {
     "channel": "v5-linux",
@@ -33,10 +33,10 @@
     "version": "5.2228"
   },
   "uad-ng": {
-    "asset": "uad-ng-noselfupdate-linux",
+    "asset": "uad-ng-linux",
     "repository": "Universal-Debloater-Alliance/universal-android-debloater-next-generation",
-    "sha256": "bae9ca2a31730dcf6c47d16915a23972690938213fb1705caaebd6d9d8794a34",
+    "sha256": "8a87865ca150749c5c80644d0fd0c32789407b1329fbb9ea7adc46d8cc3884de",
     "tag": "v1.2.0",
-    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-noselfupdate-linux"
+    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-linux"
   }
 }
