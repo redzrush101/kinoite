@@ -20,11 +20,11 @@
     "tag": "v2.1.4.1"
   },
   "samloader": {
-    "asset": "samloader-v2.1.0-linux-x86_64.zip",
+    "asset": "samloader-v2.2.0-linux-x86_64.zip",
     "repository": "topjohnwu/samloader-rs",
-    "sha256": "2cd99f3824a5ad80e45a789503527743e81a14a26b384a31b8b3db95d79cf459",
-    "tag": "2.1.0",
-    "url": "https://github.com/topjohnwu/samloader-rs/releases/download/2.1.0/samloader-v2.1.0-linux-x86_64.zip"
+    "sha256": "f6029dcce75b8a66acc1975529085c53903f7cdb35505e0ac0a973f2652480ff",
+    "tag": "2.2.0",
+    "url": "https://github.com/topjohnwu/samloader-rs/releases/download/2.2.0/samloader-v2.2.0-linux-x86_64.zip"
   },
   "sp-flash-tool": {
     "channel": "v5-linux",
