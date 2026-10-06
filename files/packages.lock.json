@@ -10,9 +10,9 @@
   "iloader": {
     "asset": "iloader-linux-x86_64.rpm",
     "repository": "nab138/iloader",
-    "sha256": "e046d3dcfdf2b8fe3db8dd4042ed45f85098f8858a3ae801541a2d932e56906c",
-    "tag": "v2.3.5",
-    "url": "https://github.com/nab138/iloader/releases/download/v2.3.5/iloader-linux-x86_64.rpm"
+    "sha256": "caa5525ce41cf785685c6cfa987254c29b4aa675369d3ae455b015126aa749b9",
+    "tag": "v2.3.6",
+    "url": "https://github.com/nab138/iloader/releases/download/v2.3.6/iloader-linux-x86_64.rpm"
   },
   "mtkclient": {
     "commit": "5a863eece86fcaa97cb8325cf747e0aae3c307e4",
