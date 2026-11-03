@@ -35,8 +35,8 @@
   "uad-ng": {
     "asset": "uad-ng-linux",
     "repository": "Universal-Debloater-Alliance/universal-android-debloater-next-generation",
-    "sha256": "8a87865ca150749c5c80644d0fd0c32789407b1329fbb9ea7adc46d8cc3884de",
-    "tag": "v1.2.0",
-    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.2.0/uad-ng-linux"
+    "sha256": "5c1223f13e4ed4412798e89893573640217c5a05afafe46817b3de7aca32108c",
+    "tag": "v1.3.1",
+    "url": "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/releases/download/v1.3.1/uad-ng-linux"
   }
 }
